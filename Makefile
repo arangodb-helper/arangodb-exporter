@@ -1,4 +1,4 @@
-PROJECT := arangodb_exporter
+PROJECT := arangodb-exporter
 ifndef SCRIPTDIR
 	SCRIPTDIR := $(shell pwd)
 endif
@@ -25,7 +25,7 @@ GOBUILDDIR := $(BUILDDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(BUILDDIR)/bin
 
-ORGPATH := github.com/arangodb-helper
+ORGPATH := github.com/arangodb
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
 REPONAME := $(PROJECT)
 REPODIR := $(ORGDIR)/$(REPONAME)
@@ -86,7 +86,7 @@ deps:
 $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s $(GOBUILDLINKTARGET) $(REPODIR)
-	@rm -f $(GOBUILDDIR)/src/github.com/arangodb && ln -s ../../../vendor/github.com/arangodb $(GOBUILDDIR)/src/github.com/arangodb
+	@rm -f $(GOBUILDDIR)/src/github.com/arangodb/go-driver && ln -s ../../../../vendor/github.com/arangodb/go-driver $(GOBUILDDIR)/src/github.com/arangodb/go-driver
 	@rm -f $(GOBUILDDIR)/src/github.com/dgrijalva && ln -s ../../../vendor/github.com/dgrijalva $(GOBUILDDIR)/src/github.com/dgrijalva
 	@rm -f $(GOBUILDDIR)/src/github.com/pkg && ln -s ../../../vendor/github.com/pkg $(GOBUILDDIR)/src/github.com/pkg
 	@rm -f $(GOBUILDDIR)/src/github.com/prometheus && ln -s ../../../vendor/github.com/prometheus $(GOBUILDDIR)/src/github.com/prometheus

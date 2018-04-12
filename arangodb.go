@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	_ "net/http/pprof"
 
 	driver "github.com/arangodb/go-driver"
@@ -45,10 +46,12 @@ type Statistics map[string]interface{}
 func (s Statistics) GetGroup(group string) Statistics {
 	entry, ok := s[group]
 	if !ok {
+		fmt.Printf("GetGroup: group '%s' missing in %v\n", group, s)
 		return nil
 	}
-	result, ok := entry.(Statistics)
+	result, ok := entry.(map[string]interface{})
 	if !ok {
+		fmt.Printf("GetGroup: group '%s' result not a Statistics in %v\n", group, s)
 		return nil
 	}
 	return result
@@ -70,6 +73,31 @@ func (s Statistics) GetFloat(key string) (float64, bool) {
 	return 0.0, false
 }
 
+// GetCounts returns an int64 array value for a statistic with given key.
+// If not found, or the value could not be converted to an int64 array, false is returned.
+func (s Statistics) GetCounts(key string) ([]int64, bool) {
+	raw, ok := s[key]
+	if !ok {
+		return nil, false
+	}
+	if rawSlice, ok := raw.([]interface{}); ok {
+		result := make([]int64, len(rawSlice))
+		for i, x := range rawSlice {
+			if v, ok := x.(int64); ok {
+				result[i] = v
+			} else if v, ok := x.(int); ok {
+				result[i] = int64(v)
+			} else if v, ok := x.(float64); ok {
+				result[i] = int64(v)
+			} else {
+				return nil, false
+			}
+		}
+		return result, true
+	}
+	return nil, false
+}
+
 // GetInt returns an int value for a statistic with given key.
 // If not found, or the value could not be converted to an int, false is returned.
 func (s Statistics) GetInt(key string) (int64, bool) {
@@ -80,7 +108,10 @@ func (s Statistics) GetInt(key string) (int64, bool) {
 	if i, ok := raw.(int64); ok {
 		return i, true
 	}
-	return 0.0, false
+	if i, ok := raw.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
 }
 
 // GetStatistics requests the statistics values from the given connection.

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	_ "net/http/pprof"
 	"strings"
 	"sync"
@@ -26,23 +27,50 @@ var (
 )
 
 // metricKey returns a key into the map of metrics for the given figure & group.
-func metricKey(group StatisticGroup, figure StatisticFigure) string {
-	prefix := strings.Replace(strings.ToLower(group.Name+"_"+figure.Name), " ", "_", -1)
-	if figure.Units != "" {
-		return prefix + "_" + strings.ToLower(figure.Units)
+func metricKey(group StatisticGroup, figure StatisticFigure, postfix string) string {
+	result := strings.Replace(strings.ToLower(group.Name+"_"+figure.Name), " ", "_", -1)
+	if postfix != "" {
+		result = result + postfix
 	}
-	return prefix
+	if figure.Units != "" {
+		return result + "_" + strings.ToLower(figure.Units)
+	}
+	return result
 }
 
-// newMetric creates a metric for the given figure & group.
-func newMetric(group StatisticGroup, figure StatisticFigure) prometheus.Metric {
-	return prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      metricKey(group, figure),
-			Help:      figure.Description,
-		},
-	)
+// newMetric creates one or more metrics for the given figure & group.
+func newMetric(group StatisticGroup, figure StatisticFigure) []prometheus.Collector {
+	switch figure.Type {
+	case FigureTypeDistribution:
+		return []prometheus.Collector{
+			// _sum
+			prometheus.NewGauge(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      metricKey(group, figure, "_sum"),
+				Help:      figure.Description,
+			}),
+			// _count
+			prometheus.NewGauge(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      metricKey(group, figure, "_count"),
+				Help:      figure.Description,
+			}),
+			// _bucket
+			prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      metricKey(group, figure, "_bucket"),
+				Help:      figure.Description,
+			}, []string{"le"}),
+		}
+	default:
+		return []prometheus.Collector{
+			prometheus.NewGauge(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      metricKey(group, figure, ""),
+				Help:      figure.Description,
+			}),
+		}
+	}
 }
 
 // Exporter collects ArangoDB statistics from the given endpoint and exports them using
@@ -52,7 +80,7 @@ type Exporter struct {
 	timeout time.Duration
 	mutex   sync.RWMutex
 
-	metrics                     map[string]prometheus.Metric
+	metrics                     map[string][]prometheus.Collector
 	up                          prometheus.Gauge
 	totalScrapes, failedScrapes prometheus.Counter
 }
@@ -99,15 +127,17 @@ func NewExporter(arangodbEndpoint, jwtSecret string, sslVerify bool, timeout tim
 			Name:      "exporter_failed_scrapes",
 			Help:      "Number of failed ArangoDB scrapes",
 		}),
-		metrics: make(map[string]prometheus.Metric),
+		metrics: make(map[string][]prometheus.Collector),
 	}, nil
 }
 
 // Describe describes all the metrics ever exported by the HAProxy exporter. It
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	for _, m := range e.metrics {
-		ch <- m.Desc()
+	for _, ms := range e.metrics {
+		for _, m := range ms {
+			m.Describe(ch)
+		}
 	}
 	ch <- e.up.Desc()
 	ch <- e.totalScrapes.Desc()
@@ -169,17 +199,46 @@ func (e *Exporter) scrape(ctx context.Context) {
 		if groupStats == nil {
 			// Skip no group is found in the statistics
 		}
-		key := metricKey(group, f)
-		m, found := e.metrics[key]
+		key := metricKey(group, f, "")
+		ms, found := e.metrics[key]
 		if !found {
-			m = newMetric(group, f)
-			e.metrics[key] = m
+			ms = newMetric(group, f)
+			e.metrics[key] = ms
 		}
 		switch f.Type {
 		case FigureTypeCurrent, FigureTypeAccumulated:
 			if value, ok := groupStats.GetFloat(f.Identifier); ok {
-				gauge := m.(prometheus.Gauge)
+				gauge := ms[0].(prometheus.Gauge)
 				gauge.Set(value)
+			}
+		case FigureTypeDistribution:
+			distStats := groupStats.GetGroup(f.Identifier)
+			if distStats != nil {
+				// _sum comes first
+				if sum, ok := distStats.GetFloat("sum"); ok {
+					gauge := ms[0].(prometheus.Gauge)
+					gauge.Set(sum)
+				}
+				// _count comes second
+				if sum, ok := distStats.GetFloat("count"); ok {
+					gauge := ms[1].(prometheus.Gauge)
+					gauge.Set(sum)
+				}
+				// _bucket comes third
+				if counts, ok := distStats.GetCounts("counts"); ok {
+					gaugeVec := ms[2].(*prometheus.GaugeVec)
+					cummulative := int64(0)
+					for i, v := range counts {
+						var leValue string
+						if i < len(f.Cuts) {
+							leValue = fmt.Sprintf("%v", f.Cuts[i])
+						} else {
+							leValue = "+Inf"
+						}
+						gaugeVec.WithLabelValues(leValue).Set(float64(cummulative + v))
+						cummulative += v
+					}
+				}
 			}
 		}
 	}
@@ -192,9 +251,11 @@ func (e *Exporter) resetMetrics() {
 }
 
 func (e *Exporter) collectMetrics(metrics chan<- prometheus.Metric) {
-	for _, m := range e.metrics {
-		if c, ok := m.(prometheus.Collector); ok {
-			c.Collect(metrics)
+	for _, ms := range e.metrics {
+		for _, m := range ms {
+			if c, ok := m.(prometheus.Collector); ok {
+				c.Collect(metrics)
+			}
 		}
 	}
 }
