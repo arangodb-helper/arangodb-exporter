@@ -13,7 +13,9 @@ import (
 )
 
 var (
-	maskAny = errors.WithStack
+	projectVersion = "dev"
+	projectBuild   = "dev"
+	maskAny        = errors.WithStack
 
 	cmdMain = &cobra.Command{
 		Use: "arangodb_exporter",
@@ -45,10 +47,9 @@ func main() {
 }
 
 func cmdMainRun(cmd *cobra.Command, args []string) {
-	log.Infoln("Starting arangodb_exporter", version.Info())
-	log.Infoln("Build context", version.BuildContext())
+	log.Infoln("Starting arangodb_exporter %s, build %s", projectVersion, projectBuild)
 
-	exporter, err := NewExporter(arangodbOptions.endpoint, false, arangodbOptions.timeout)
+	exporter, err := NewExporter(arangodbOptions.endpoint, arangodbOptions.jwtSecret, false, arangodbOptions.timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		w.Write([]byte(`<html>
              <head><title>ArangoDB Exporter</title></head>
              <body>
-             <h1>Haproxy Exporter</h1>
+             <h1>ArangoDB Exporter</h1>
              <p><a href='/metrics'>Metrics</a></p>
              </body>
              </html>`))

@@ -67,13 +67,13 @@ ifneq ("$(DOCKERCLI)", "")
 	@${MAKE} -f $(MAKEFILE) -B GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) build-local
 else
 	@${MAKE} -f $(MAKEFILE) deps
-	GOPATH=$(GOBUILDDIR) go build -o $(BUILDDIR)/arangodb $(REPOPATH)
+	GOPATH=$(GOBUILDDIR) go build -o $(BUILDDIR)/arangodb_exporter $(REPOPATH)
 endif
 
 build: $(BIN)
 
 build-local: build 
-	@ln -sf $(BIN) $(ROOTDIR)/arangodb
+	@ln -sf $(BIN) $(ROOTDIR)/arangodb_exporter
 
 binaries: $(GHRELEASE)
 	@${MAKE} -f $(MAKEFILE) -B GOOS=linux GOARCH=amd64 build
@@ -87,6 +87,7 @@ $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s $(GOBUILDLINKTARGET) $(REPODIR)
 	@rm -f $(GOBUILDDIR)/src/github.com/arangodb && ln -s ../../../vendor/github.com/arangodb $(GOBUILDDIR)/src/github.com/arangodb
+	@rm -f $(GOBUILDDIR)/src/github.com/dgrijalva && ln -s ../../../vendor/github.com/dgrijalva $(GOBUILDDIR)/src/github.com/dgrijalva
 	@rm -f $(GOBUILDDIR)/src/github.com/pkg && ln -s ../../../vendor/github.com/pkg $(GOBUILDDIR)/src/github.com/pkg
 	@rm -f $(GOBUILDDIR)/src/github.com/prometheus && ln -s ../../../vendor/github.com/prometheus $(GOBUILDDIR)/src/github.com/prometheus
 	@rm -f $(GOBUILDDIR)/src/github.com/spf13 && ln -s ../../../vendor/github.com/spf13 $(GOBUILDDIR)/src/github.com/spf13

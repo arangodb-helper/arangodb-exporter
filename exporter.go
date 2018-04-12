@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	_ "net/http/pprof"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,7 +27,11 @@ var (
 
 // metricKey returns a key into the map of metrics for the given figure & group.
 func metricKey(group StatisticGroup, figure StatisticFigure) string {
-	return group.Name + "_" + figure.Name
+	prefix := strings.Replace(strings.ToLower(group.Name+"_"+figure.Name), " ", "_", -1)
+	if figure.Units != "" {
+		return prefix + "_" + strings.ToLower(figure.Units)
+	}
+	return prefix
 }
 
 // newMetric creates a metric for the given figure & group.
@@ -53,7 +58,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(arangodbEndpoint string, sslVerify bool, timeout time.Duration) (*Exporter, error) {
+func NewExporter(arangodbEndpoint, jwtSecret string, sslVerify bool, timeout time.Duration) (*Exporter, error) {
 	connCfg := driver_http.ConnectionConfig{
 		Endpoints: []string{arangodbEndpoint},
 	}
@@ -64,9 +69,21 @@ func NewExporter(arangodbEndpoint string, sslVerify bool, timeout time.Duration)
 	if err != nil {
 		return nil, maskAny(err)
 	}
+	if jwtSecret != "" {
+		hdr, err := CreateArangodJwtAuthorizationHeader(jwtSecret)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+		auth := driver.RawAuthentication(hdr)
+		conn, err = conn.SetAuthentication(auth)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+	}
 
 	return &Exporter{
-		conn: conn,
+		conn:    conn,
+		timeout: timeout,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
