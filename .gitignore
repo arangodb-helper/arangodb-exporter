@@ -1,0 +1,4 @@
+.gobuild
+bin
+arangodb_exporter
+
