@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	_ "net/http/pprof"
 
 	driver "github.com/arangodb/go-driver"
@@ -14,12 +13,14 @@ type StatisticsDescription struct {
 	Figures []StatisticFigure `json:"figures"`
 }
 
+// StatisticGroup describes a group of statistics.
 type StatisticGroup struct {
 	Group       string `json:"group"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
+// StatisticFigure describes a single statistic.
 type StatisticFigure struct {
 	Group       string     `json:"group"`
 	Identifier  string     `json:"identifier"`
@@ -30,6 +31,7 @@ type StatisticFigure struct {
 	Cuts        []float64  `json:"cuts,omitempty"`
 }
 
+// FigureType is a strongly typed type of statistic.
 type FigureType string
 
 const (
@@ -46,12 +48,10 @@ type Statistics map[string]interface{}
 func (s Statistics) GetGroup(group string) Statistics {
 	entry, ok := s[group]
 	if !ok {
-		fmt.Printf("GetGroup: group '%s' missing in %v\n", group, s)
 		return nil
 	}
 	result, ok := entry.(map[string]interface{})
 	if !ok {
-		fmt.Printf("GetGroup: group '%s' result not a Statistics in %v\n", group, s)
 		return nil
 	}
 	return result

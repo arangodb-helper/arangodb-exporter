@@ -20,12 +20,6 @@ const (
 
 )
 
-var (
-	frontendLabelNames = []string{"frontend"}
-	backendLabelNames  = []string{"backend"}
-	serverLabelNames   = []string{"backend", "server"}
-)
-
 // metricKey returns a key into the map of metrics for the given figure & group.
 func metricKey(group StatisticGroup, figure StatisticFigure, postfix string) string {
 	result := strings.Replace(strings.ToLower(group.Name+"_"+figure.Name), " ", "_", -1)
