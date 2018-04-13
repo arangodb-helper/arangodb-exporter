@@ -24,8 +24,9 @@ endif
 GOBUILDDIR := $(BUILDDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(BUILDDIR)/bin
+VENDORDIR := $(SCRIPTDIR)/vendor
 
-ORGPATH := github.com/arangodb
+ORGPATH := github.com/arangodb-helper
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
 REPONAME := $(PROJECT)
 REPODIR := $(ORGDIR)/$(REPONAME)
@@ -34,75 +35,67 @@ REPOPATH := $(ORGPATH)/$(REPONAME)
 GOPATH := $(GOBUILDDIR)
 GOVERSION := 1.10.1-alpine
 
-ifndef GOOS
-	GOOS := linux
-endif
-ifndef GOARCH
-	GOARCH := amd64
-endif
-ifeq ("$(GOOS)", "windows")
-	GOEXE := .exe
-endif
-
 ifndef DOCKERNAMESPACE
 	DOCKERNAMESPACE := arangodb
 endif
 
-BINNAME := arangodb_exporter$(GOEXE)
-BIN := $(BINDIR)/$(GOOS)/$(GOARCH)/$(BINNAME)
-RELEASE := $(GOBUILDDIR)/bin/release 
-GHRELEASE := $(GOBUILDDIR)/bin/github-release 
+PULSAR := $(GOBUILDDIR)/bin/pulsar$(shell go env GOEXE)
+RELEASE := $(GOBUILDDIR)/bin/release$(shell go env GOEXE)
+GHRELEASE := $(GOBUILDDIR)/bin/github-release$(shell go env GOEXE)
+GOX := $(GOBUILDDIR)/bin/gox$(shell go env GOEXE)
 
 SOURCES := $(shell find $(SRCDIR) -name '*.go' -not -path './test/*')
 
-.PHONY: all clean deps docker build build-local
+.PHONY: all clean build docker
 
 all: build
 
 clean:
-	rm -Rf $(BIN) $(BINDIR) $(GOBUILDDIR) $(ROOTDIR)/arangodb_exporter
+	rm -Rf $(BINDIR) $(GOBUILDDIR) $(ROOTDIR)/arangodb-exporter
 
-local:
-ifneq ("$(DOCKERCLI)", "")
-	@${MAKE} -f $(MAKEFILE) -B GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) build-local
-else
-	@${MAKE} -f $(MAKEFILE) deps
-	GOPATH=$(GOBUILDDIR) go build -o $(BUILDDIR)/arangodb_exporter $(REPOPATH)
-endif
-
-build: $(BIN)
-
-build-local: build 
-	@ln -sf $(BIN) $(ROOTDIR)/arangodb_exporter
-
-binaries: $(GHRELEASE)
-	@${MAKE} -f $(MAKEFILE) -B GOOS=linux GOARCH=amd64 build
-	@${MAKE} -f $(MAKEFILE) -B GOOS=darwin GOARCH=amd64 build
-	@${MAKE} -f $(MAKEFILE) -B GOOS=windows GOARCH=amd64 build
-
-deps:
-	@${MAKE} -f $(MAKEFILE) -B SCRIPTDIR=$(SCRIPTDIR) BUILDDIR=$(BUILDDIR) -s $(GOBUILDDIR)
+build: $(GOBUILDDIR) $(GHRELEASE) $(GOX)
+	CGO_ENABLED=0 GOPATH=$(GOBUILDDIR) $(GOX) \
+		-os="darwin linux windows" \
+		-arch="amd64 arm arm64" \
+		-osarch="!darwin/arm !darwin/arm64" \
+		-ldflags="-X main.projectVersion=${VERSION} -X main.projectBuild=${COMMIT}" \
+		-output="bin/{{.OS}}/{{.Arch}}/arangodb-exporter" \
+		-tags="netgo" \
+		github.com/arangodb-helper/arangodb-exporter
+	@ln -sf $(BINDIR)/$(shell go env GOOS)/$(shell go env GOARCH)/arangodb-exporter$(shell go env GOEXE)
 
 $(GOBUILDDIR):
+	# Build pulsar from vendor
+	@mkdir -p $(GOBUILDDIR)
+	@ln -sf $(VENDORDIR) $(GOBUILDDIR)/src
+	@GOPATH=$(GOBUILDDIR) go install github.com/pulcy/pulsar
+	@rm -Rf $(GOBUILDDIR)/src
+	# Prepare .gobuild directory
 	@mkdir -p $(ORGDIR)
-	@rm -f $(REPODIR) && ln -s $(GOBUILDLINKTARGET) $(REPODIR)
-	cd $(REPODIR) && dep ensure
+	@rm -f $(REPODIR) && ln -sf ../../../.. $(REPODIR)
+	GOPATH=$(GOBUILDDIR) $(PULSAR) go flatten -V $(VENDORDIR)
 
-$(BIN): $(GOBUILDDIR) $(SOURCES)
-	@mkdir -p $(BINDIR)
-	docker run \
-		--rm \
-		-v $(SRCDIR):/usr/code \
-		-e GOPATH=/usr/code/.gobuild \
-		-e GOOS=$(GOOS) \
-		-e GOARCH=$(GOARCH) \
-		-e CGO_ENABLED=0 \
-		-w /usr/code/ \
-		golang:$(GOVERSION) \
-		go build -a -installsuffix netgo -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o /usr/code/bin/$(GOOS)/$(GOARCH)/$(BINNAME) $(REPOPATH)
+.PHONY: update-vendor
+update-vendor:
+	@mkdir -p $(GOBUILDDIR)
+	@GOPATH=$(GOBUILDDIR) go get github.com/pulcy/pulsar
+	@rm -Rf $(VENDORDIR)
+	@mkdir -p $(VENDORDIR)
+	@$(PULSAR) go vendor -V $(VENDORDIR) \
+		github.com/aktau/github-release \
+		github.com/arangodb/go-driver \
+		github.com/coreos/go-semver/semver \
+		github.com/dgrijalva/jwt-go \
+		github.com/mitchellh/gox \
+		github.com/pkg/errors \
+		github.com/prometheus/client_golang/prometheus \
+		github.com/pulcy/pulsar \
+		github.com/spf13/cobra
+	@$(PULSAR) go flatten -V $(VENDORDIR) $(VENDORDIR)
+	@${MAKE} -B -s clean
 
 docker: build
-	docker build -t arangodb/arangodb-exporter .
+	docker build -t $(DOCKERNAMESPACE)/arangodb-exporter .
 
 docker-push: docker
 ifneq ($(DOCKERNAMESPACE), arangodb)
@@ -125,6 +118,9 @@ $(RELEASE): $(GOBUILDDIR) $(SOURCES) $(GHRELEASE)
 
 $(GHRELEASE): $(GOBUILDDIR) 
 	GOPATH=$(GOBUILDDIR) go build -o $(GHRELEASE) github.com/aktau/github-release
+
+$(GOX): 
+	GOPATH=$(GOBUILDDIR) go build -o $(GOX) github.com/mitchellh/gox
 
 release-patch: $(RELEASE)
 	GOPATH=$(GOBUILDDIR) $(RELEASE) -type=patch 
