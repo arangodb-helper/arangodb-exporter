@@ -244,10 +244,18 @@ func (e *Exporter) scrape(ctx context.Context) {
 	}
 }
 
+type resetter interface {
+	Reset()
+}
+
 func (e *Exporter) resetMetrics() {
-	/*for _, m := range e.metrics {
-		//		m.Reset()
-	}*/
+	for _, ms := range e.metrics {
+		for _, m := range ms {
+			if r, ok := m.(resetter); ok {
+				r.Reset()
+			}
+		}
+	}
 }
 
 func (e *Exporter) collectMetrics(metrics chan<- prometheus.Metric) {
