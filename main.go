@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
@@ -47,7 +48,7 @@ func main() {
 }
 
 func cmdMainRun(cmd *cobra.Command, args []string) {
-	log.Infoln("Starting arangodb_exporter %s, build %s", projectVersion, projectBuild)
+	log.Infoln(fmt.Sprintf("Starting arangodb_exporter %s, build %s", projectVersion, projectBuild))
 
 	exporter, err := NewExporter(arangodbOptions.endpoint, arangodbOptions.jwtSecret, false, arangodbOptions.timeout)
 	if err != nil {

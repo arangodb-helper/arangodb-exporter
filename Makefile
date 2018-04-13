@@ -36,13 +36,27 @@ GOPATH := $(GOBUILDDIR)
 GOVERSION := 1.10.1-alpine
 
 ifndef DOCKERNAMESPACE
-	DOCKERNAMESPACE := arangodb
+	echo "Set DOCKERNAMESPACE"
+	exit 1
 endif
+ifndef DOCKERTAG 
+	DOCKERTAG := dev
+endif
+DOCKERIMAGE := $(DOCKERNAMESPACE)/arangodb-exporter:$(DOCKERTAG)
 
 PULSAR := $(GOBUILDDIR)/bin/pulsar$(shell go env GOEXE)
 RELEASE := $(GOBUILDDIR)/bin/release$(shell go env GOEXE)
 GHRELEASE := $(GOBUILDDIR)/bin/github-release$(shell go env GOEXE)
 GOX := $(GOBUILDDIR)/bin/gox$(shell go env GOEXE)
+MANIFESTTOOL := $(GOBUILDDIR)/bin/manifest-tool$(shell go env GOEXE)
+
+# Magical rubbish to teach make what commas and spaces are.
+EMPTY :=
+SPACE := $(EMPTY) $(EMPTY)
+COMMA := $(EMPTY),$(EMPTY)
+
+ARCHS:=amd64 arm arm64
+PLATFORMS:=$(subst $(SPACE),$(COMMA),$(foreach arch,$(ARCHS),linux/$(arch)))
 
 SOURCES := $(shell find $(SRCDIR) -name '*.go' -not -path './test/*')
 
@@ -53,10 +67,10 @@ all: build
 clean:
 	rm -Rf $(BINDIR) $(GOBUILDDIR) $(ROOTDIR)/arangodb-exporter
 
-build: $(GOBUILDDIR) $(GHRELEASE) $(GOX)
+build: $(GOBUILDDIR) $(GHRELEASE) $(GOX) $(MANIFESTTOOL)
 	CGO_ENABLED=0 GOPATH=$(GOBUILDDIR) $(GOX) \
 		-os="darwin linux windows" \
-		-arch="amd64 arm arm64" \
+		-arch="$(ARCHS)" \
 		-osarch="!darwin/arm !darwin/arm64" \
 		-ldflags="-X main.projectVersion=${VERSION} -X main.projectBuild=${COMMIT}" \
 		-output="bin/{{.OS}}/{{.Arch}}/arangodb-exporter" \
@@ -86,6 +100,7 @@ update-vendor:
 		github.com/arangodb/go-driver \
 		github.com/coreos/go-semver/semver \
 		github.com/dgrijalva/jwt-go \
+		github.com/estesp/manifest-tool \
 		github.com/mitchellh/gox \
 		github.com/pkg/errors \
 		github.com/prometheus/client_golang/prometheus \
@@ -95,23 +110,14 @@ update-vendor:
 	@${MAKE} -B -s clean
 
 docker: build
-	docker build -t $(DOCKERNAMESPACE)/arangodb-exporter .
-
-docker-push: docker
-ifneq ($(DOCKERNAMESPACE), arangodb)
-	docker tag arangodb/arangodb-exporter $(DOCKERNAMESPACE)/arangodb-exporter
-endif
-	docker push $(DOCKERNAMESPACE)/arangodb-exporter
-
-docker-push-version: docker
-	docker tag arangodb/arangodb-exporter arangodb/arangodb-exporter:$(VERSION)
-	docker tag arangodb/arangodb-exporter arangodb/arangodb-exporter:$(VERSION_MAJOR_MINOR)
-	docker tag arangodb/arangodb-exporter arangodb/arangodb-exporter:$(VERSION_MAJOR)
-	docker tag arangodb/arangodb-exporter arangodb/arangodb-exporter:latest
-	docker push arangodb/arangodb-exporter:$(VERSION)
-	docker push arangodb/arangodb-exporter:$(VERSION_MAJOR_MINOR)
-	docker push arangodb/arangodb-exporter:$(VERSION_MAJOR)
-	docker push arangodb/arangodb-exporter:latest
+	for arch in $(ARCHS); do \
+		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch . ;\
+		docker push $(DOCKERIMAGE)-$$arch ;\
+	done
+	$(MANIFESTTOOL) $(MANIFESTAUTH) push from-args \
+    	--platforms $(PLATFORMS) \
+    	--template $(DOCKERIMAGE)-ARCH \
+    	--target $(DOCKERIMAGE)
 
 $(RELEASE): $(GOBUILDDIR) $(SOURCES) $(GHRELEASE)
 	GOPATH=$(GOBUILDDIR) go build -o $(RELEASE) $(REPOPATH)/tools/release
@@ -121,6 +127,10 @@ $(GHRELEASE): $(GOBUILDDIR)
 
 $(GOX): 
 	GOPATH=$(GOBUILDDIR) go build -o $(GOX) github.com/mitchellh/gox
+
+$(MANIFESTTOOL): 
+	GOPATH=$(GOBUILDDIR) go build -o $(MANIFESTTOOL) github.com/estesp/manifest-tool
+
 
 release-patch: $(RELEASE)
 	GOPATH=$(GOBUILDDIR) $(RELEASE) -type=patch 

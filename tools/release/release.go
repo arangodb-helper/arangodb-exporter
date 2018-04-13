@@ -46,9 +46,9 @@ var (
 	binFolder   string // Folder containing binaries
 
 	binaries = map[string]string{
-		"arangodb_exporter-darwin-amd64":      "darwin/amd64/arangodb_exporter",
-		"arangodb_exporter-linux-amd64":       "linux/amd64/arangodb_exporter",
-		"arangodb_exporter-windows-amd64.exe": "windows/amd64/arangodb_exporter.exe",
+		"arangodb-exporter-darwin-amd64":      "darwin/amd64/arangodb-exporter",
+		"arangodb-exporter-linux-amd64":       "linux/amd64/arangodb-exporter",
+		"arangodb-exporter-windows-amd64.exe": "windows/amd64/arangodb-exporter.exe",
 	}
 )
 
@@ -67,9 +67,9 @@ func main() {
 	checkCleanRepo()
 	version := bumpVersion(releaseType)
 	make("clean")
-	make("binaries")
+	make("build")
 	createSHA256Sums()
-	make("docker-push-version")
+	make("docker")
 	gitTag(version)
 	githubCreateRelease(version)
 	bumpVersion("devel")
