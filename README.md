@@ -8,9 +8,10 @@ in a format compatible with prometheus.
 To use the ArangoDB Exporter, run the following:
 
 ```bash
-arangodb_exporter \
+arangodb-exporter \
     --arangodb.endpoint=http://<your-database-host>:8529 \
-    --arangodb.jwtsecret=<your-jwt-secret>
+    --arangodb.jwtsecret=<your-jwt-secret> \
+    --ssl.keyfile=<your-optional-ssl-keyfile>
 ```
 
 This results in an ArangoDB Exporter exposing all statistics of
