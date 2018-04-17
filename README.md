@@ -17,3 +17,12 @@ arangodb-exporter \
 This results in an ArangoDB Exporter exposing all statistics of
 the ArangoDB server (running at `http://<your-database-host>:8529`)
 at `http://<your-host-ip>:9101/metrics`.
+
+## Building
+
+To build this project, you need Go 1.8 or higher installed.
+Then run:
+
+```bash
+DOCKERNAMESPACE=<your docker hub account name> make
+```
