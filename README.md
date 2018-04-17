@@ -20,7 +20,7 @@ at `http://<your-host-ip>:9101/metrics`.
 
 ## Building
 
-To build this project, you need Go 1.8 or higher installed.
+To build this project, you need Go 1.8 or higher and Docker installed.
 Then run:
 
 ```bash
