@@ -70,8 +70,7 @@ func main() {
 	version := bumpVersion(releaseType)
 	envVars := map[string]string{
 		"DOCKERNAMESPACE": "arangodb",
-		"IMAGETAG":        version,
-		"MANIFESTSUFFIX":  "-",
+		"DOCKERTAG":       version,
 	}
 	make("clean", envVars)
 	make("build", envVars)
