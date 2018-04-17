@@ -35,10 +35,6 @@ REPOPATH := $(ORGPATH)/$(REPONAME)
 GOPATH := $(GOBUILDDIR)
 GOVERSION := 1.10.1-alpine
 
-ifndef DOCKERNAMESPACE
-	echo "Set DOCKERNAMESPACE"
-	exit 1
-endif
 ifndef DOCKERTAG 
 	DOCKERTAG := dev
 endif
@@ -67,7 +63,7 @@ all: build
 clean:
 	rm -Rf $(BINDIR) $(GOBUILDDIR) $(ROOTDIR)/arangodb-exporter
 
-build: $(GOBUILDDIR) $(GHRELEASE) $(GOX) $(MANIFESTTOOL)
+build: check-vars $(GOBUILDDIR) $(GHRELEASE) $(GOX) $(MANIFESTTOOL)
 	CGO_ENABLED=0 GOPATH=$(GOBUILDDIR) $(GOX) \
 		-os="darwin linux windows" \
 		-arch="$(ARCHS)" \
@@ -77,6 +73,14 @@ build: $(GOBUILDDIR) $(GHRELEASE) $(GOX) $(MANIFESTTOOL)
 		-tags="netgo" \
 		github.com/arangodb-helper/arangodb-exporter
 	@ln -sf $(BINDIR)/$(shell go env GOOS)/$(shell go env GOARCH)/arangodb-exporter$(shell go env GOEXE)
+
+.PHONY: check-vars
+check-vars:
+ifndef DOCKERNAMESPACE
+	@echo "DOCKERNAMESPACE must be set"
+	@exit 1
+endif
+	@echo "Using docker namespace: $(DOCKERNAMESPACE)"
 
 $(GOBUILDDIR):
 	# Build pulsar from vendor
