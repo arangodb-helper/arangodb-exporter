@@ -113,6 +113,10 @@ update-vendor:
 	@$(PULSAR) go flatten -V $(VENDORDIR) $(VENDORDIR)
 	@${MAKE} -B -s clean
 
+.PHONY: run-tests
+run-tests: $(GOBUILDDIR)
+	GOPATH=$(GOBUILDDIR) go test $(REPOPATH)
+
 docker: build
 	for arch in $(ARCHS); do \
 		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch . ;\
