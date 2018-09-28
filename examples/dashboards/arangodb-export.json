@@ -1,4 +1,34 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_CENT01",
+      "label": "cent01",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "5.2.4"
+    },
+    {
+      "type": "panel",
+      "id": "graph",
+      "name": "Graph",
+      "version": "5.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "5.0.0"
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -15,7 +45,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 2,
+  "id": null,
   "links": [],
   "panels": [
     {
@@ -23,7 +53,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -107,7 +137,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -139,7 +169,6 @@
       "steppedLine": false,
       "targets": [
         {
-          "$$hashKey": "object:2247",
           "expr": "arangodb_http_request_statistics_total_requests",
           "format": "time_series",
           "intervalFactor": 1,
@@ -192,7 +221,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -224,7 +253,6 @@
       "steppedLine": false,
       "targets": [
         {
-          "$$hashKey": "object:1623",
           "expr": "sum(increase(arangodb_http_request_statistics_http_get_requests[5m])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -251,7 +279,6 @@
       },
       "yaxes": [
         {
-          "$$hashKey": "object:1770",
           "decimals": null,
           "format": "short",
           "label": null,
@@ -261,7 +288,6 @@
           "show": true
         },
         {
-          "$$hashKey": "object:1771",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -280,7 +306,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -312,7 +338,6 @@
       "steppedLine": false,
       "targets": [
         {
-          "$$hashKey": "object:1687",
           "expr": "sum(increase(arangodb_http_request_statistics_http_post_requests[5m])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -320,7 +345,6 @@
           "refId": "A"
         },
         {
-          "$$hashKey": "object:2085",
           "expr": "sum(increase(arangodb_http_request_statistics_http_put_requests[5m])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -328,7 +352,6 @@
           "refId": "B"
         },
         {
-          "$$hashKey": "object:2107",
           "expr": "sum(increase(arangodb_http_request_statistics_http_patch_requests[5m])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -355,7 +378,6 @@
       },
       "yaxes": [
         {
-          "$$hashKey": "object:1715",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -364,7 +386,6 @@
           "show": true
         },
         {
-          "$$hashKey": "object:1716",
           "decimals": null,
           "format": "short",
           "label": null,
@@ -384,7 +405,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -416,7 +437,6 @@
       "steppedLine": false,
       "targets": [
         {
-          "$$hashKey": "object:1968",
           "expr": "sum(increase(arangodb_http_request_statistics_http_delete_requests[5m])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -443,7 +463,6 @@
       },
       "yaxes": [
         {
-          "$$hashKey": "object:2007",
           "decimals": null,
           "format": "short",
           "label": null,
@@ -453,7 +472,6 @@
           "show": true
         },
         {
-          "$$hashKey": "object:2008",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -472,7 +490,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -504,7 +522,6 @@
       "steppedLine": false,
       "targets": [
         {
-          "$$hashKey": "object:1378",
           "expr": "sum(increase(arangodb_exporter_total_scrapes[1m])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -557,7 +574,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "${DS_CENT01}",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -589,7 +606,6 @@
       "steppedLine": false,
       "targets": [
         {
-          "$$hashKey": "object:1378",
           "expr": "sum(increase(arangodb_exporter_failed_scrapes[1h])) by (job)",
           "format": "time_series",
           "intervalFactor": 1,
@@ -616,7 +632,6 @@
       },
       "yaxes": [
         {
-          "$$hashKey": "object:1566",
           "decimals": null,
           "format": "short",
           "label": null,
@@ -626,7 +641,6 @@
           "show": true
         },
         {
-          "$$hashKey": "object:1567",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -679,5 +693,5 @@
   "timezone": "",
   "title": "ArangoDB",
   "uid": "ENSfDRnmz",
-  "version": 8
+  "version": 1
 }
