@@ -33,7 +33,12 @@ const (
 // CreateArangodJwtAuthorizationHeader calculates a JWT authorization header, for authorization
 // of a request to an arangod server, based on the given secret.
 // If the secret is empty, nothing is done.
-func CreateArangodJwtAuthorizationHeader(jwtSecret string) (string, error) {
+func CreateArangodJwtAuthorizationHeader(jwt string) (string, error) {
+	return "bearer " + jwt, nil
+}
+
+// CreateArangodJWT creates a superuser arangod jwt
+func CreateArangodJWT(jwtSecret string) (string, error) {
 	if jwtSecret == "" {
 		return "", nil
 	}
@@ -41,7 +46,7 @@ func CreateArangodJwtAuthorizationHeader(jwtSecret string) (string, error) {
 	// you would like it to contain.
 	token := jg.NewWithClaims(jg.SigningMethodHS256, jg.MapClaims{
 		"iss":       issArangod,
-		"server_id": "foo",
+		"server_id": "exporter",
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
@@ -50,5 +55,5 @@ func CreateArangodJwtAuthorizationHeader(jwtSecret string) (string, error) {
 		return "", maskAny(err)
 	}
 
-	return "bearer " + signedToken, nil
+	return signedToken, nil
 }

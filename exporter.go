@@ -102,7 +102,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(arangodbEndpoint, jwtSecret string, sslVerify bool, timeout time.Duration) (*Exporter, error) {
+func NewExporter(arangodbEndpoint, jwt string, sslVerify bool, timeout time.Duration) (*Exporter, error) {
 	connCfg := driver_http.ConnectionConfig{
 		Endpoints: []string{arangodbEndpoint},
 	}
@@ -113,8 +113,8 @@ func NewExporter(arangodbEndpoint, jwtSecret string, sslVerify bool, timeout tim
 	if err != nil {
 		return nil, maskAny(err)
 	}
-	if jwtSecret != "" {
-		hdr, err := CreateArangodJwtAuthorizationHeader(jwtSecret)
+	if jwt != "" {
+		hdr, err := CreateArangodJwtAuthorizationHeader(jwt)
 		if err != nil {
 			return nil, maskAny(err)
 		}

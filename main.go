@@ -24,6 +24,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
@@ -49,6 +50,7 @@ var (
 	arangodbOptions struct {
 		endpoint  string
 		jwtSecret string
+		jwtFile   string
 		timeout   time.Duration
 	}
 )
@@ -61,7 +63,10 @@ func init() {
 
 	f.StringVar(&arangodbOptions.endpoint, "arangodb.endpoint", "http://127.0.0.1:8529", "Endpoint used to reach the ArangoDB server")
 	f.StringVar(&arangodbOptions.jwtSecret, "arangodb.jwtsecret", "", "JWT Secret used for authentication with ArangoDB server")
+	f.StringVar(&arangodbOptions.jwtFile, "arangodb.jwt-file", "", "File containing the JWT for authentication with ArangoDB server")
 	f.DurationVar(&arangodbOptions.timeout, "arangodb.timeout", time.Second*15, "Timeout of statistics requests for ArangoDB")
+
+	f.MarkDeprecated("arangodb.jwtsecret", "please use --arangodb.jwt-file instead")
 }
 
 func main() {
@@ -71,7 +76,22 @@ func main() {
 func cmdMainRun(cmd *cobra.Command, args []string) {
 	log.Infoln(fmt.Sprintf("Starting arangodb-exporter %s, build %s", projectVersion, projectBuild))
 
-	exporter, err := NewExporter(arangodbOptions.endpoint, arangodbOptions.jwtSecret, false, arangodbOptions.timeout)
+	var token string
+	if arangodbOptions.jwtFile != "" {
+		data, err := ioutil.ReadFile(arangodbOptions.jwtFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		token = string(data)
+	} else if arangodbOptions.jwtSecret != "" {
+		var err error
+		token, err = CreateArangodJWT(arangodbOptions.jwtSecret)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	exporter, err := NewExporter(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
