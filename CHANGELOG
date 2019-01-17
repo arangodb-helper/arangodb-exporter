@@ -1,0 +1,5 @@
+0.1.4 (XXXX-XX-XX)
+------------------
+
+* Added --arangodb.jwt-file option so that a file containing the jwt can be used by the exporter to authenticate to the database.
+  This is *not* the jwt secret. Please refere to the arangodb-starter documentation for how to create such a token.
