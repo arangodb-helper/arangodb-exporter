@@ -1,4 +1,4 @@
-0.1.4 (XXXX-XX-XX)
+0.1.4 (2019-01-17)
 ------------------
 
 * Added --arangodb.jwt-file option so that a file containing the jwt can be used by the exporter to authenticate to the database.
