@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -82,7 +83,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		token = string(data)
+		token = strings.TrimSpace(string(data))
 	} else if arangodbOptions.jwtSecret != "" {
 		var err error
 		token, err = CreateArangodJWT(arangodbOptions.jwtSecret)
