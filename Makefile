@@ -40,11 +40,9 @@ ifndef DOCKERTAG
 endif
 DOCKERIMAGE := $(DOCKERNAMESPACE)/arangodb-exporter:$(DOCKERTAG)
 
-PULSAR := $(GOBUILDDIR)/bin/pulsar$(shell go env GOEXE)
-RELEASE := $(GOBUILDDIR)/bin/release$(shell go env GOEXE)
-GHRELEASE := $(GOBUILDDIR)/bin/github-release$(shell go env GOEXE)
-GOX := $(GOBUILDDIR)/bin/gox$(shell go env GOEXE)
-MANIFESTTOOL := $(GOBUILDDIR)/bin/manifest-tool$(shell go env GOEXE)
+RELEASE := $(SRCDIR)/bin/release$(shell go env GOEXE)
+GHRELEASE := $(SRCDIR)/bin/github-release$(shell go env GOEXE)
+GOX := $(SRCDIR)/bin/gox$(shell go env GOEXE)
 
 # Magical rubbish to teach make what commas and spaces are.
 EMPTY :=
@@ -63,8 +61,8 @@ all: build
 clean:
 	rm -Rf $(BINDIR) $(GOBUILDDIR) $(ROOTDIR)/arangodb-exporter
 
-build: check-vars $(GOBUILDDIR) $(GHRELEASE) $(GOX) $(MANIFESTTOOL)
-	CGO_ENABLED=0 GOPATH=$(GOBUILDDIR) $(GOX) \
+build: $(GOX)
+	CGO_ENABLED=0 $(GOX) \
 		-os="darwin linux windows" \
 		-arch="$(ARCHS)" \
 		-osarch="!darwin/arm !darwin/arm64" \
@@ -72,7 +70,6 @@ build: check-vars $(GOBUILDDIR) $(GHRELEASE) $(GOX) $(MANIFESTTOOL)
 		-output="bin/{{.OS}}/{{.Arch}}/arangodb-exporter" \
 		-tags="netgo" \
 		github.com/arangodb-helper/arangodb-exporter
-	@ln -sf $(BINDIR)/$(shell go env GOOS)/$(shell go env GOARCH)/arangodb-exporter$(shell go env GOEXE)
 
 .PHONY: check-vars
 check-vars:
@@ -83,69 +80,35 @@ endif
 	@echo "Using docker namespace: $(DOCKERNAMESPACE)"
 
 $(GOBUILDDIR):
-	# Build pulsar from vendor
-	@mkdir -p $(GOBUILDDIR)
-	@ln -sf $(VENDORDIR) $(GOBUILDDIR)/src
-	@GOPATH=$(GOBUILDDIR) go install github.com/pulcy/pulsar
-	@rm -Rf $(GOBUILDDIR)/src
-	# Prepare .gobuild directory
-	@mkdir -p $(ORGDIR)
-	@rm -f $(REPODIR) && ln -sf ../../../.. $(REPODIR)
-	GOPATH=$(GOBUILDDIR) $(PULSAR) go flatten -V $(VENDORDIR)
-
-.PHONY: update-vendor
-update-vendor:
-	@mkdir -p $(GOBUILDDIR)
-	@GOPATH=$(GOBUILDDIR) go get github.com/pulcy/pulsar
-	@rm -Rf $(VENDORDIR)
-	@mkdir -p $(VENDORDIR)
-	@$(PULSAR) go vendor -V $(VENDORDIR) \
-		github.com/aktau/github-release \
-		github.com/arangodb/go-driver \
-		github.com/coreos/go-semver/semver \
-		github.com/dgrijalva/jwt-go \
-		github.com/estesp/manifest-tool \
-		github.com/mitchellh/gox \
-		github.com/pkg/errors \
-		github.com/prometheus/client_golang/prometheus \
-		github.com/pulcy/pulsar \
-		github.com/spf13/cobra
-	@$(PULSAR) go flatten -V $(VENDORDIR) $(VENDORDIR)
-	@${MAKE} -B -s clean
+	# pass
 
 .PHONY: run-tests
-run-tests: $(GOBUILDDIR)
-	GOPATH=$(GOBUILDDIR) go test $(REPOPATH)
+run-tests: 
+	go test $(REPOPATH)
 
-docker: build
+docker: check-vars build
 	for arch in $(ARCHS); do \
 		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch . ;\
 		docker push $(DOCKERIMAGE)-$$arch ;\
 	done
-	$(MANIFESTTOOL) $(MANIFESTAUTH) push from-args \
-    	--platforms $(PLATFORMS) \
-    	--template $(DOCKERIMAGE)-ARCH \
-    	--target $(DOCKERIMAGE)
+	docker manifest create --amend $(DOCKERIMAGE) $(foreach arch,$(ARCHS),$(DOCKERIMAGE)-$(arch))
+	docker manifest push $(DOCKERIMAGE)
 
 $(RELEASE): $(GOBUILDDIR) $(SOURCES) $(GHRELEASE)
-	GOPATH=$(GOBUILDDIR) go build -o $(RELEASE) $(REPOPATH)/tools/release
+	go build -o $(RELEASE) $(REPOPATH)/tools/release
 
 $(GHRELEASE): $(GOBUILDDIR) 
-	GOPATH=$(GOBUILDDIR) go build -o $(GHRELEASE) github.com/aktau/github-release
+	go build -o $(GHRELEASE) github.com/aktau/github-release
 
 $(GOX): 
-	GOPATH=$(GOBUILDDIR) go build -o $(GOX) github.com/mitchellh/gox
-
-$(MANIFESTTOOL): 
-	GOPATH=$(GOBUILDDIR) go build -o $(MANIFESTTOOL) github.com/estesp/manifest-tool
-
+	go build -o $(GOX) github.com/mitchellh/gox
 
 release-patch: $(RELEASE)
-	GOPATH=$(GOBUILDDIR) $(RELEASE) -type=patch 
+	$(RELEASE) -type=patch 
 
 release-minor: $(RELEASE)
-	GOPATH=$(GOBUILDDIR) $(RELEASE) -type=minor
+	$(RELEASE) -type=minor
 
 release-major: $(RELEASE)
-	GOPATH=$(GOBUILDDIR) $(RELEASE) -type=major 
+	$(RELEASE) -type=major 
 
