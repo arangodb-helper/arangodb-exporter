@@ -59,7 +59,7 @@ SOURCES := $(shell find $(SRCDIR) -name '*.go' -not -path './test/*')
 all: build
 
 clean:
-	rm -Rf $(BINDIR) $(GOBUILDDIR) $(ROOTDIR)/arangodb-exporter
+	rm -Rf $(BINDIR) $(ROOTDIR)/arangodb-exporter
 
 build: $(GOX)
 	CGO_ENABLED=0 $(GOX) \
