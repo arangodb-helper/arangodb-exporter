@@ -57,7 +57,7 @@ var (
 func init() {
 	flag.StringVar(&versionFile, "versionfile", "./VERSION", "Path of the VERSION file")
 	flag.StringVar(&releaseType, "type", "patch", "Type of release to build (major|minor|patch)")
-	flag.StringVar(&ghRelease, "github-release", ".gobuild/bin/github-release", "Full path of github-release tool")
+	flag.StringVar(&ghRelease, "github-release", "bin/github-release", "Full path of github-release tool")
 	flag.StringVar(&ghUser, "github-user", "arangodb-helper", "Github account name to create release in")
 	flag.StringVar(&ghRepo, "github-repo", "arangodb-exporter", "Github repository name to create release in")
 	flag.StringVar(&binFolder, "bin-folder", "./bin", "Folder containing binaries")
