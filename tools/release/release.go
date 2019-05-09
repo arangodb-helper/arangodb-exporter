@@ -72,7 +72,7 @@ func main() {
 		"DOCKERNAMESPACE": "arangodb",
 		"DOCKERTAG":       version,
 	}
-	make("clean", envVars)
+	//make("clean", envVars)
 	make("build", envVars)
 	createSHA256Sums()
 	make("docker", envVars)
