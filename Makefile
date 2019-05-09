@@ -103,12 +103,12 @@ $(GHRELEASE): $(GOBUILDDIR)
 $(GOX): 
 	go build -o $(GOX) github.com/mitchellh/gox
 
-release-patch: $(RELEASE) $(GHRELEASE)
+release-patch: $(RELEASE)
 	$(RELEASE) -type=patch 
 
-release-minor: $(RELEASE) $(GHRELEASE)
+release-minor: $(RELEASE)
 	$(RELEASE) -type=minor
 
-release-major: $(RELEASE) $(GHRELEASE)
+release-major: $(RELEASE)
 	$(RELEASE) -type=major 
 
