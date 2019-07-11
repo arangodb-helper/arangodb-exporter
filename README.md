@@ -93,7 +93,7 @@ your `ServiceMonitor`.
 
 ## Building
 
-To build this project, you need Go 1.8 or higher and Docker installed.
+To build this project, you need Go 1.12 or higher and Docker installed.
 Then run:
 
 ```bash
