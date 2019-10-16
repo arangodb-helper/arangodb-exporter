@@ -88,11 +88,17 @@ run-tests:
 
 docker: check-vars build
 	for arch in $(ARCHS); do \
-		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch . ;\
-		docker push $(DOCKERIMAGE)-$$arch ;\
+		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch -f Dockerfile.scratch . ; \
+		docker push $(DOCKERIMAGE)-$$arch ; \
 	done
-	docker manifest create --amend $(DOCKERIMAGE) $(foreach arch,$(ARCHS),$(DOCKERIMAGE)-$(arch))
-	docker manifest push $(DOCKERIMAGE)
+	for arch in amd64; do \
+		sed -e 's|FROM scratch|FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0|' Dockerfile.scratch > Dockerfile.ubi ; \
+		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-ubi -f Dockerfile.ubi . ; \
+		rm -f Dockerfile.ubi ; \
+		docker push $(DOCKERIMAGE)-ubi ; \
+	done
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend $(DOCKERIMAGE) $(foreach arch,$(ARCHS),$(DOCKERIMAGE)-$(arch)) $(DOCKERIMAGE)-ubi
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push $(DOCKERIMAGE)
 
 $(RELEASE): $(GOBUILDDIR) $(SOURCES) $(GHRELEASE)
 	go build -o $(RELEASE) $(REPOPATH)/tools/release
