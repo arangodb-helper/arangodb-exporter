@@ -9,6 +9,7 @@ VERSION_MAJOR_MINOR := $(shell echo $(VERSION_MAJOR_MINOR_PATCH) | cut -f 1,2 -d
 VERSION_MAJOR := $(shell echo $(VERSION_MAJOR_MINOR) | cut -f 1 -d '.')
 COMMIT := $(shell git rev-parse --short HEAD)
 MAKEFILE := $(ROOTDIR)/Makefile
+UBI := registry.access.redhat.com/ubi8/ubi-minimal:8.0
 
 ifndef NODOCKER
 	DOCKERCLI := $(shell which docker)
@@ -92,7 +93,7 @@ docker: check-vars build
 		docker push $(DOCKERIMAGE)-$$arch ; \
 	done
 	for arch in amd64; do \
-		sed -e 's|FROM scratch|FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0|' Dockerfile.scratch > Dockerfile.ubi ; \
+		sed -e 's|FROM scratch|FROM $(UBI)|' Dockerfile.scratch > Dockerfile.ubi ; \
 		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-ubi -f Dockerfile.ubi . ; \
 		rm -f Dockerfile.ubi ; \
 		docker push $(DOCKERIMAGE)-ubi ; \
