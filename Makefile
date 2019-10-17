@@ -9,6 +9,7 @@ VERSION_MAJOR_MINOR := $(shell echo $(VERSION_MAJOR_MINOR_PATCH) | cut -f 1,2 -d
 VERSION_MAJOR := $(shell echo $(VERSION_MAJOR_MINOR) | cut -f 1 -d '.')
 COMMIT := $(shell git rev-parse --short HEAD)
 MAKEFILE := $(ROOTDIR)/Makefile
+UBI := registry.access.redhat.com/ubi8/ubi-minimal:8.0
 
 ifndef NODOCKER
 	DOCKERCLI := $(shell which docker)
@@ -88,11 +89,17 @@ run-tests:
 
 docker: check-vars build
 	for arch in $(ARCHS); do \
-		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch . ;\
-		docker push $(DOCKERIMAGE)-$$arch ;\
+		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch -f Dockerfile.scratch . ; \
+		docker push $(DOCKERIMAGE)-$$arch ; \
 	done
-	docker manifest create --amend $(DOCKERIMAGE) $(foreach arch,$(ARCHS),$(DOCKERIMAGE)-$(arch))
-	docker manifest push $(DOCKERIMAGE)
+	for arch in amd64; do \
+		sed -e 's|FROM scratch|FROM $(UBI)|' Dockerfile.scratch > Dockerfile.ubi ; \
+		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-ubi -f Dockerfile.ubi . ; \
+		rm -f Dockerfile.ubi ; \
+		docker push $(DOCKERIMAGE)-ubi ; \
+	done
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend $(DOCKERIMAGE) $(foreach arch,$(ARCHS),$(DOCKERIMAGE)-$(arch)) $(DOCKERIMAGE)-ubi
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push $(DOCKERIMAGE)
 
 $(RELEASE): $(GOBUILDDIR) $(SOURCES) $(GHRELEASE)
 	go build -o $(RELEASE) $(REPOPATH)/tools/release
