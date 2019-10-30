@@ -1,6 +1,17 @@
 FROM scratch
-ARG GOARCH=amd64
 
+ARG VERSION
+LABEL name="arangodb-exporter" \
+      vendor="ArangoDB" \
+      version="${VERSION}" \
+      release="${VERSION}" \
+      summary="ArangoDD Exporter" \
+      description="ArangoDB Exporter" \
+      maintainer="redhat@arangodb.com"
+
+ADD ./LICENSE /licenses/LICENSE
+
+ARG GOARCH=amd64
 COPY bin/linux/${GOARCH}/arangodb-exporter /app/
 
 EXPOSE 9101

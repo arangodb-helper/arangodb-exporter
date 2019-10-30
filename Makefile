@@ -89,12 +89,12 @@ run-tests:
 
 docker: check-vars build
 	for arch in $(ARCHS); do \
-		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-$$arch -f Dockerfile.scratch . ; \
+		docker build --build-arg "GOARCH=$$arch" --build-arg "VERSION=$(VERSION_MAJOR_MINOR_PATCH)" -t $(DOCKERIMAGE)-$$arch -f Dockerfile.scratch . ; \
 		docker push $(DOCKERIMAGE)-$$arch ; \
 	done
 	for arch in amd64; do \
 		sed -e 's|FROM scratch|FROM $(UBI)|' Dockerfile.scratch > Dockerfile.ubi ; \
-		docker build --build-arg=GOARCH=$$arch -t $(DOCKERIMAGE)-ubi -f Dockerfile.ubi . ; \
+		docker build --build-arg "GOARCH=$$arch" --build-arg "VERSION=$(VERSION_MAJOR_MINOR_PATCH)" -t $(DOCKERIMAGE)-ubi -f Dockerfile.ubi . ; \
 		rm -f Dockerfile.ubi ; \
 		docker push $(DOCKERIMAGE)-ubi ; \
 	done
