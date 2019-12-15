@@ -29,6 +29,7 @@ import (
 	_ "net/http/pprof"
 	"strings"
 	"time"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -62,7 +63,6 @@ func init() {
 	f.StringVar(&serverOptions.Address, "server.address", ":9101", "Address the exporter will listen on (IP:port)")
 	f.StringVar(&serverOptions.TLSKeyfile, "ssl.keyfile", "", "File containing TLS certificate used for the metrics server. Format equal to ArangoDB keyfiles")
 
-	f.StringVar(&arangodbOptions.endpoint, "arangodb.endpoint", "http://127.0.0.1:8529", "Endpoint used to reach the ArangoDB server")
 	f.StringVar(&arangodbOptions.jwtSecret, "arangodb.jwtsecret", "", "JWT Secret used for authentication with ArangoDB server")
 	f.StringVar(&arangodbOptions.jwtFile, "arangodb.jwt-file", "", "File containing the JWT for authentication with ArangoDB server")
 	f.DurationVar(&arangodbOptions.timeout, "arangodb.timeout", time.Second*15, "Timeout of statistics requests for ArangoDB")
@@ -78,6 +78,9 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 	log.Infoln(fmt.Sprintf("Starting arangodb-exporter %s, build %s", projectVersion, projectBuild))
 
 	var token string
+	var conn string
+        conn = os.Getenv("DB_URL")
+	
 	if arangodbOptions.jwtFile != "" {
 		data, err := ioutil.ReadFile(arangodbOptions.jwtFile)
 		if err != nil {
@@ -92,7 +95,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	exporter, err := NewExporter(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
+	exporter, err := NewExporter(conn, token, false, arangodbOptions.timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
