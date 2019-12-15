@@ -6,10 +6,13 @@ in a format compatible with prometheus.
 ## Usage
 
 To use the ArangoDB Exporter, run the following:
+```
 
+export DB_URL="http://arangodb_username:arangodb_pass@0.0.0.0:8529"
+
+```
 ```bash
 arangodb-exporter \
-    --arangodb.endpoint=http://<your-database-host>:8529 \
     --arangodb.jwtsecret=<your-jwt-secret> \
     --ssl.keyfile=<your-optional-ssl-keyfile>
 ```
