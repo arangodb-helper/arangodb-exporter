@@ -93,7 +93,7 @@ func (p passthru) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	_, err = io.Copy(resp, data.Body)
 
-	if data.Body == nil {
+	if err == nil {
 		// Ignore error
 		resp.Write([]byte("Unable to write body"))
 		resp.WriteHeader(http.StatusInternalServerError)
