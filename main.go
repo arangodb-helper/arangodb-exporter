@@ -37,6 +37,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type ExporterMode string
+
+const (
+	ModeInternal ExporterMode = "internal"
+	ModePassthru ExporterMode = "passthru"
+)
+
 var (
 	projectVersion = "dev"
 	projectBuild   = "dev"
@@ -50,6 +57,7 @@ var (
 	serverOptions   ServerConfig
 	arangodbOptions struct {
 		endpoint  string
+		mode      string
 		jwtSecret string
 		jwtFile   string
 		timeout   time.Duration
@@ -66,6 +74,8 @@ func init() {
 	f.StringVar(&arangodbOptions.jwtSecret, "arangodb.jwtsecret", "", "JWT Secret used for authentication with ArangoDB server")
 	f.StringVar(&arangodbOptions.jwtFile, "arangodb.jwt-file", "", "File containing the JWT for authentication with ArangoDB server")
 	f.DurationVar(&arangodbOptions.timeout, "arangodb.timeout", time.Second*15, "Timeout of statistics requests for ArangoDB")
+
+	f.StringVar(&arangodbOptions.mode, "mode", "internal", "Mode for ArangoDB exporter. Internal - use internal, old mode of metrics calculation (default). Passthru - expose ArangoD metrics directly, using proper authentication.")
 
 	f.MarkDeprecated("arangodb.jwtsecret", "please use --arangodb.jwt-file instead")
 }
@@ -91,20 +101,28 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 			log.Fatal(err)
 		}
 	}
-
-	exporter, err := NewExporter(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
-	if err != nil {
-		log.Fatal(err)
+	mux := http.NewServeMux()
+	switch ExporterMode(arangodbOptions.mode) {
+	case ModePassthru:
+		passthru, err := NewPassthru(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
+		if err != nil {
+			log.Fatal(err)
+		}
+		mux.Handle("/metrics", passthru)
+	default:
+		exporter, err := NewExporter(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prometheus.MustRegister(exporter)
+		version.Version = projectVersion
+		version.Revision = projectBuild
+		prometheus.MustRegister(version.NewCollector("arangodb_exporter"))
+		mux.Handle("/metrics", prometheus.Handler())
 	}
-	prometheus.MustRegister(exporter)
-	version.Version = projectVersion
-	version.Revision = projectBuild
-	prometheus.MustRegister(version.NewCollector("arangodb_exporter"))
 
 	log.Infoln("Listening on", serverOptions.Address)
 
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", prometheus.Handler())
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>ArangoDB Exporter</title></head>

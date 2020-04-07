@@ -1,4 +1,4 @@
 .gobuild
 bin
 arangodb-exporter
-
+vendor

@@ -1,4 +1,5 @@
-FROM scratch
+ARG BASE_IMAGE=scratch
+FROM ${BASE_IMAGE}
 
 ARG VERSION
 LABEL name="arangodb-exporter" \

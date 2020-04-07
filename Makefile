@@ -87,16 +87,23 @@ $(GOBUILDDIR):
 run-tests: 
 	go test $(REPOPATH)
 
+docker-ubi-base: check-vars
+	docker build --no-cache -t $(DOCKERIMAGE)-base-image-ubi -f Dockerfile.ubi .
+
+docker-ubi: docker-ubi-base build
+	for arch in amd64; do \
+		docker build --build-arg "GOARCH=$$arch" --build-arg "VERSION=$(VERSION_MAJOR_MINOR_PATCH)" -t $(DOCKERIMAGE)-ubi --build-arg "BASE_IMAGE=$(DOCKERIMAGE)-base-image-ubi" -f Dockerfile.scratch . ; \
+		docker push $(DOCKERIMAGE)-ubi ; \
+	done
+
+ifndef IGNORE_UBI
+docker: docker-ubi
+endif
+
 docker: check-vars build
 	for arch in $(ARCHS); do \
 		docker build --build-arg "GOARCH=$$arch" --build-arg "VERSION=$(VERSION_MAJOR_MINOR_PATCH)" -t $(DOCKERIMAGE)-$$arch -f Dockerfile.scratch . ; \
 		docker push $(DOCKERIMAGE)-$$arch ; \
-	done
-	for arch in amd64; do \
-		sed -e 's|FROM scratch|FROM $(UBI)|' Dockerfile.scratch > Dockerfile.ubi ; \
-		docker build --build-arg "GOARCH=$$arch" --build-arg "VERSION=$(VERSION_MAJOR_MINOR_PATCH)" -t $(DOCKERIMAGE)-ubi -f Dockerfile.ubi . ; \
-		rm -f Dockerfile.ubi ; \
-		docker push $(DOCKERIMAGE)-ubi ; \
 	done
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend $(DOCKERIMAGE) $(foreach arch,$(ARCHS),$(DOCKERIMAGE)-$(arch)) $(DOCKERIMAGE)-ubi
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push $(DOCKERIMAGE)
