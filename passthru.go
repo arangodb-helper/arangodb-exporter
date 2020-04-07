@@ -77,15 +77,15 @@ func (p passthru) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		// Ignore error
-		resp.Write([]byte(err.Error()))
 		resp.WriteHeader(http.StatusInternalServerError)
+		resp.Write([]byte(err.Error()))
 		return
 	}
 
 	if data.Body == nil {
 		// Ignore error
-		resp.Write([]byte("Body is empty"))
 		resp.WriteHeader(http.StatusInternalServerError)
+		resp.Write([]byte("Body is empty"))
 		return
 	}
 
@@ -93,10 +93,10 @@ func (p passthru) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	_, err = io.Copy(resp, data.Body)
 
-	if err == nil {
+	if err != nil {
 		// Ignore error
-		resp.Write([]byte("Unable to write body"))
 		resp.WriteHeader(http.StatusInternalServerError)
+		resp.Write([]byte("Unable to write body"))
 		return
 	}
 }
