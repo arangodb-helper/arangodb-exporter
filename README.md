@@ -18,6 +18,20 @@ This results in an ArangoDB Exporter exposing all statistics of
 the ArangoDB server (running at `http://<your-database-host>:8529`)
 at `http://<your-host-ip>:9101/metrics`.
 
+## Exporter modes
+
+### internal
+
+Use internal metrics exporter mode for ArangoDB < 3.6.0
+
+In this mode metrics are calculated on ArangoDB Exporter side
+
+### passthru
+
+Expose ArangoDB metrics for ArangoDB >= 3.6.0
+
+In this mode metrics provided by ArangoDB `_admin/metrics` are exposed on Exporter port.
+
 ## Running in Docker
 
 To run the ArangoDB Exporter in docker, use an image such as
