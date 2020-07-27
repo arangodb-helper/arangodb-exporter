@@ -18,7 +18,7 @@
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
 // Author Ewout Prangsma
-//
+// Edited by Ayman Shorman
 
 package main
 
