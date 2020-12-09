@@ -92,7 +92,7 @@ func newMetric(group StatisticGroup, figure StatisticFigure) []prometheus.Collec
 // Exporter collects ArangoDB statistics from the given endpoint and exports them using
 // the prometheus metrics package.
 type Exporter struct {
-	conn    driver.Connection
+	factory connClientFactory
 	timeout time.Duration
 	mutex   sync.RWMutex
 
@@ -102,31 +102,10 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(arangodbEndpoint, jwt string, sslVerify bool, timeout time.Duration) (*Exporter, error) {
-	connCfg := driver_http.ConnectionConfig{
-		Endpoints: []string{arangodbEndpoint},
-	}
-	if !sslVerify {
-		connCfg.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-	conn, err := driver_http.NewConnection(connCfg)
-	if err != nil {
-		return nil, maskAny(err)
-	}
-	if jwt != "" {
-		hdr, err := CreateArangodJwtAuthorizationHeader(jwt)
-		if err != nil {
-			return nil, maskAny(err)
-		}
-		auth := driver.RawAuthentication(hdr)
-		conn, err = conn.SetAuthentication(auth)
-		if err != nil {
-			return nil, maskAny(err)
-		}
-	}
+func NewExporter(arangodbEndpoint string, jwt Authentication, sslVerify bool, timeout time.Duration) (*Exporter, error) {
 
 	return &Exporter{
-		conn:    conn,
+		factory: newConnClientFactory(arangodbEndpoint, jwt, sslVerify, timeout),
 		timeout: timeout,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -145,6 +124,42 @@ func NewExporter(arangodbEndpoint, jwt string, sslVerify bool, timeout time.Dura
 		}),
 		metrics: make(map[string][]prometheus.Collector),
 	}, nil
+}
+
+type connClientFactory func() (driver.Connection, error)
+
+func newConnClientFactory(arangodbEndpoint string, auth Authentication, sslVerify bool, timeout time.Duration) connClientFactory {
+	return func() (driver.Connection, error) {
+		connCfg := driver_http.ConnectionConfig{
+			Endpoints: []string{arangodbEndpoint},
+		}
+		if !sslVerify {
+			connCfg.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+		}
+
+		jwt, err := auth()
+		if err != nil {
+			return nil, err
+		}
+
+		conn, err := driver_http.NewConnection(connCfg)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+		if jwt != "" {
+			hdr, err := CreateArangodJwtAuthorizationHeader(jwt)
+			if err != nil {
+				return nil, maskAny(err)
+			}
+			auth := driver.RawAuthentication(hdr)
+			conn, err = conn.SetAuthentication(auth)
+			if err != nil {
+				return nil, maskAny(err)
+			}
+		}
+
+		return conn, nil
+	}
 }
 
 // Describe describes all the metrics ever exported by the HAProxy exporter. It
@@ -181,8 +196,15 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) scrape(ctx context.Context) {
 	e.totalScrapes.Inc()
 
+	conn, err := e.factory()
+	if err != nil {
+		e.up.Set(0)
+		log.Errorf("Failed to create client: %v", err)
+		return
+	}
+
 	// Gather descriptions
-	descr, err := GetStatisticsDescription(ctx, e.conn)
+	descr, err := GetStatisticsDescription(ctx, conn)
 	if err != nil {
 		e.up.Set(0)
 		log.Errorf("Failed to fetch statistic descriptions: %v", err)
@@ -190,7 +212,7 @@ func (e *Exporter) scrape(ctx context.Context) {
 	}
 
 	// Collect statistics
-	stats, err := GetStatistics(ctx, e.conn)
+	stats, err := GetStatistics(ctx, conn)
 	if err != nil {
 		e.up.Set(0)
 		log.Errorf("Failed to fetch statistics: %v", err)
