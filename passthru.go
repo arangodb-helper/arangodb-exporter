@@ -25,51 +25,69 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
 var _ http.Handler = &passthru{}
 
-func NewPassthru(arangodbEndpoint, jwt string, sslVerify bool, timeout time.Duration) (http.Handler, error) {
-	transport := &http.Transport{}
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/_admin/metrics", arangodbEndpoint), nil)
-	if err != nil {
-		return nil, maskAny(err)
-	}
-
-	if !sslVerify {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-
-	if jwt != "" {
-		hdr, err := CreateArangodJwtAuthorizationHeader(jwt)
-		if err != nil {
-			return nil, maskAny(err)
-		}
-		req.Header.Add("Authorization", hdr)
-	}
-
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   timeout,
-	}
-
+func NewPassthru(arangodbEndpoint string, auth Authentication, sslVerify bool, timeout time.Duration) (http.Handler, error) {
 	return &passthru{
-		client:  client,
-		request: req,
+		factory: newHttpClientFactory(arangodbEndpoint, auth, sslVerify, timeout),
 	}, nil
 }
 
+type httpClientFactory func() (*http.Client, *http.Request, error)
+
+func newHttpClientFactory(arangodbEndpoint string, auth Authentication, sslVerify bool, timeout time.Duration) httpClientFactory {
+	return func() (*http.Client, *http.Request, error) {
+		transport := &http.Transport{}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/_admin/metrics", arangodbEndpoint), nil)
+		if err != nil {
+			return nil, nil, maskAny(err)
+		}
+
+		if !sslVerify {
+			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		}
+
+		jwt, err := auth()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if jwt != "" {
+			hdr, err := CreateArangodJwtAuthorizationHeader(jwt)
+			if err != nil {
+				return nil, nil, maskAny(err)
+			}
+			req.Header.Add("Authorization", hdr)
+		}
+
+		req.Header.Add("x-arango-allow-dirty-read", "true") // Allow read from follower in AF mode
+
+		client := &http.Client{
+			Transport: transport,
+			Timeout:   timeout,
+		}
+
+		return client, req, nil
+	}
+}
+
 type passthru struct {
-	request *http.Request
-	client  *http.Client
+	factory httpClientFactory
 }
 
 func (p passthru) get() (*http.Response, error) {
-	return p.client.Do(p.request)
+	c, req, err := p.factory()
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
 }
 
 func (p passthru) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -91,8 +109,20 @@ func (p passthru) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	defer data.Body.Close()
 
-	_, err = io.Copy(resp, data.Body)
+	response, err := ioutil.ReadAll(data.Body)
+	if err != nil {
+		// Ignore error
+		resp.WriteHeader(http.StatusInternalServerError)
+		resp.Write([]byte(err.Error()))
+		return
+	}
 
+	responseStr := string(response)
+
+	// Fix Header response
+	responseStr = strings.ReplaceAll(responseStr, "guage", "gauge")
+
+	_, err = resp.Write([]byte(responseStr))
 	if err != nil {
 		// Ignore error
 		resp.WriteHeader(http.StatusInternalServerError)

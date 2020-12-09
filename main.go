@@ -24,10 +24,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -87,30 +85,16 @@ func main() {
 func cmdMainRun(cmd *cobra.Command, args []string) {
 	log.Infoln(fmt.Sprintf("Starting arangodb-exporter %s, build %s", projectVersion, projectBuild))
 
-	var token string
-	if arangodbOptions.jwtFile != "" {
-		data, err := ioutil.ReadFile(arangodbOptions.jwtFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		token = strings.TrimSpace(string(data))
-	} else if arangodbOptions.jwtSecret != "" {
-		var err error
-		token, err = CreateArangodJWT(arangodbOptions.jwtSecret)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 	mux := http.NewServeMux()
 	switch ExporterMode(arangodbOptions.mode) {
 	case ModePassthru:
-		passthru, err := NewPassthru(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
+		passthru, err := NewPassthru(arangodbOptions.endpoint, newAuthentication(), false, arangodbOptions.timeout)
 		if err != nil {
 			log.Fatal(err)
 		}
 		mux.Handle("/metrics", passthru)
 	default:
-		exporter, err := NewExporter(arangodbOptions.endpoint, token, false, arangodbOptions.timeout)
+		exporter, err := NewExporter(arangodbOptions.endpoint, newAuthentication(), false, arangodbOptions.timeout)
 		if err != nil {
 			log.Fatal(err)
 		}
