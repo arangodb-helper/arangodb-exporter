@@ -137,7 +137,7 @@ $(GHRELEASE): $(GOBUILDDIR)
 github-release: $(GHRELEASE)
 
 $(GOX): 
-	go build -o $(GOX) github.com/mitchellh/gox
+	go build -mod='' -o $(GOX) github.com/mitchellh/gox
 
 release-patch: $(RELEASE) $(GHRELEASE)
 	$(RELEASE) -type=patch 
