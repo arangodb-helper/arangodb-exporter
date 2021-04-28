@@ -45,7 +45,7 @@ func newHttpClientFactory(arangodbEndpoint string, auth Authentication, sslVerif
 	return func() (*http.Client, *http.Request, error) {
 		transport := &http.Transport{}
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/_admin/metrics", arangodbEndpoint), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/_admin/metrics/v2", arangodbEndpoint), nil)
 		if err != nil {
 			return nil, nil, maskAny(err)
 		}
