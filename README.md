@@ -3,6 +3,13 @@
 This exporter exposes the statistics provided by a specific ArangoDB instance
 in a format compatible with prometheus.
 
+## Deprecation notice
+
+This component has been deprecated.
+
+Recent ArangoDB versions support exposing metrics directly into
+a Prometheus format. We recommend using that.
+
 ## Usage
 
 To use the ArangoDB Exporter, run the following:
