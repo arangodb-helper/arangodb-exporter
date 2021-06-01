@@ -10,6 +10,9 @@ This component has been deprecated.
 Recent ArangoDB versions support exposing metrics directly into
 a Prometheus format. We recommend using that.
 
+For more details on how to do that,
+go to [github.com/arangodb/kube-arangodb/docs/design/exporter.md](https://github.com/arangodb/kube-arangodb/blob/master/docs/design/exporter.md).
+
 ## Usage
 
 To use the ArangoDB Exporter, run the following:
