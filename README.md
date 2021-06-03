@@ -40,7 +40,7 @@ In this mode metrics are calculated on ArangoDB Exporter side
 
 Expose ArangoDB metrics for ArangoDB >= 3.6.0
 
-In this mode metrics provided by ArangoDB `_admin/metrics` are exposed on Exporter port.
+In this mode metrics provided by ArangoDB `_admin/metrics/v2` are exposed on Exporter port.
 
 ## Running in Docker
 
